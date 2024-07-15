@@ -1,0 +1,122 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: homework
+  labels:
+    app.kubernetes.io/name: staticweb
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+    http {
+      access_log /dev/stdout;
+      error_log /dev/stdout info;
+      server {
+          listen       8000;
+          server_name  _;
+          root   /homework;
+          index  index.html;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: staticweb-deployment
+  namespace: homework
+  labels:
+    app.kubernetes.io/name: staticweb
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: staticweb
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 3
+      maxUnavailable: 2
+  template:
+    metadata:
+      name: staticweb
+      namespace: homework
+      labels:
+        app.kubernetes.io/name: staticweb
+    spec:
+      nodeSelector:
+        homework: "true"
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - name: staticweb-port
+          containerPort: 8000
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh","-c","rm -rf /homework/index.html"]
+        volumeMounts:
+        - name: nginx-main-conf
+          mountPath: /etc/nginx
+          readOnly: true
+        - name: shared
+          mountPath: /homework
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - test -f /homework/index.html
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /index.html
+            port: staticweb-port
+            httpHeaders:
+            - name: K8SHealthChecker
+              value: LivenessProbe
+          initialDelaySeconds: 5
+          periodSeconds: 3
+      initContainers:
+      - name: htmlgenerator
+        image: alpine:latest
+        args:
+          - /bin/sh
+          - -c
+          - echo "i am index.html" > /init/index.html
+        volumeMounts:
+        - name: shared
+          mountPath: "/init"
+      volumes:
+      - name: nginx-main-conf
+        configMap:
+          name: nginx-config
+          items:
+            - key: "nginx.conf"
+              path: "nginx.conf"
+      - name: shared
+        emptyDir:
+          medium: ""
+          sizeLimit: 1Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: staticweb
+  namespace: homework
+  labels:
+    app.kubernetes.io/name: staticweb
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: staticweb
+  ports:
+  - name: static-web-svc-port
+    protocol: TCP
+    port: 8000
+    targetPort: staticweb-port
+    nodePort: 32000
