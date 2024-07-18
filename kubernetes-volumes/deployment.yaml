@@ -77,6 +77,5 @@ spec:
             - key: "nginx.conf"
               path: "nginx.conf"
       - name: shared
-        emptyDir:
-          medium: ""
-          sizeLimit: 1Mi
+        persistentVolumeClaim:
+          claimName: "pvc001"
