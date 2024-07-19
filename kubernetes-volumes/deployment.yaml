@@ -1,0 +1,81 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: staticweb-deployment
+  namespace: homework
+  labels:
+    app.kubernetes.io/name: staticweb
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: staticweb
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 3
+      maxUnavailable: 2
+  template:
+    metadata:
+      name: staticweb
+      namespace: homework
+      labels:
+        app.kubernetes.io/name: staticweb
+    spec:
+      nodeSelector:
+        homework: "true"
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - name: staticweb-port
+          containerPort: 8000
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh","-c","rm -rf /homework/index.html"]
+        volumeMounts:
+        - name: nginx-main-conf
+          mountPath: /etc/nginx
+          readOnly: true
+        - name: shared
+          mountPath: /homework
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: staticweb-port
+            httpHeaders:
+            - name: X-Readiness-Probe
+              value: k8s-local
+          initialDelaySeconds: 10
+          periodSeconds: 3
+        livenessProbe:
+          httpGet:
+            path: /index.html
+            port: staticweb-port
+            httpHeaders:
+            - name: K8SHealthChecker
+              value: LivenessProbe
+          initialDelaySeconds: 5
+          periodSeconds: 3
+      initContainers:
+      - name: htmlgenerator
+        image: alpine:latest
+        args:
+          - /bin/sh
+          - -c
+          - echo "i am index.html" > /init/index.html
+        volumeMounts:
+        - name: shared
+          mountPath: "/init"
+      volumes:
+      - name: nginx-main-conf
+        configMap:
+          name: nginx-config
+          items:
+            - key: "nginx.conf"
+              path: "nginx.conf"
+      - name: shared
+        persistentVolumeClaim:
+          claimName: "pvc001"

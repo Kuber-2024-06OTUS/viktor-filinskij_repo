@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: homework
+  labels:
+    app.kubernetes.io/name: staticweb
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+    http {
+      access_log /dev/stdout;
+      error_log /dev/stdout info;
+      server {
+          listen       8000;
+          server_name  _;
+          root   /homework;
+          index  index.html;
+      }
+    }
