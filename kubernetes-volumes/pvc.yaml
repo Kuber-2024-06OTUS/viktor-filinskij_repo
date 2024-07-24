@@ -16,7 +16,7 @@ metadata:
   name: pv001
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   capacity:
     storage: 100Mi
   claimRef:
@@ -44,7 +44,7 @@ metadata:
 spec:
   storageClassName: "local-storage"
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   volumeMode: Filesystem
   resources:
     requests:
