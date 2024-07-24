@@ -87,6 +87,6 @@ spec:
       - name: web-config
         configMap:
           name: homework-config
-#         items:
-#           - key: "conf"
-#             path: "conf"
+          items:
+            - key: "conf"
+              path: "conf"
