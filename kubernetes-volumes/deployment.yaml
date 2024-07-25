@@ -88,5 +88,5 @@ spec:
         configMap:
           name: homework-config
           items:
-            - key: "conf"
+            - key: "app.conf"
               path: "conf"
