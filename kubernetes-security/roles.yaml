@@ -1,0 +1,71 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: homework
+  name: homework-admin
+rules:
+- apiGroups: ["*"] # "" indicates the core API group
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # "namespace" omitted since ClusterRoles are not namespaced
+  name: cluster-role-monitoring
+rules:
+- apiGroups: ["*"]
+  # at the HTTP level, the name of the resource for accessing Secret
+  # objects is "secrets"
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["/metrics"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: monitoring
+  namespace: homework
+subjects:
+# You can specify more than one "subject"
+- kind: ServiceAccount
+  name: monitoring # "name" is case sensitive # should match monitoring
+  apiGroup: ""
+roleRef:
+  # "roleRef" specifies the binding to a Role / ClusterRole
+  kind: ClusterRole #this must be Role or ClusterRole
+  name: cluster-role-monitoring # this must match the name of the Role or ClusterRole you wish to bind to
+  apiGroup: ""
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: admins
+  namespace: homework
+subjects:
+# You can specify more than one "subject"
+- kind: ServiceAccount
+  name: cd # "name" is case sensitive # should match monitoring
+  apiGroup: ""
+roleRef:
+  # "roleRef" specifies the binding to a Role / ClusterRole
+  kind: Role #this must be Role or ClusterRole
+  name: homework-admin # this must match the name of the Role or ClusterRole you wish to bind to
+  apiGroup: ""
+---
+apiVersion: rbac.authorization.k8s.io/v1
+# This cluster role binding allows anyone in the "manager" group to read secrets in any namespace.
+kind: ClusterRoleBinding
+metadata:
+  name: read-secrets-global
+subjects:
+- kind: Group
+  name: manager # Name is case sensitive
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: secret-reader
+  apiGroup: ""
