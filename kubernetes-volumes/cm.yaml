@@ -21,3 +21,16 @@ data:
           index  index.html;
       }
     }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homework-config
+  namespace: homework
+  labels:
+    app.kubernetes.io/name: staticweb
+data:
+  app.conf: |
+    variable1=value1
+    variable2=value2
+    variable3=value3

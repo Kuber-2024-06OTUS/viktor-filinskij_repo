@@ -34,13 +34,18 @@ spec:
         lifecycle:
           preStop:
             exec:
-              command: ["/bin/sh","-c","rm -rf /homework/index.html"]
+              command: ["/bin/sh","-c","rm -rf /homework/index.html /homework/conf"]
         volumeMounts:
         - name: nginx-main-conf
           mountPath: /etc/nginx
           readOnly: true
         - name: shared
           mountPath: /homework
+          readOnly: false
+        - name: web-config
+          mountPath: /homework/conf
+          readOnly: true
+          subPath: conf
         readinessProbe:
           httpGet:
             path: /index.html
@@ -79,3 +84,9 @@ spec:
       - name: shared
         persistentVolumeClaim:
           claimName: "pvc001"
+      - name: web-config
+        configMap:
+          name: homework-config
+          items:
+            - key: "app.conf"
+              path: "conf"
