@@ -43,8 +43,28 @@ spec:
         - name: shared
           mountPath: /homework
           readOnly: false
+        # when mounting config as subpath of pvc, config map content will be available only from container
+        # but not on the host. On host inside /srv this "conf" file will be empty and has rwx rights
+        # on kube node :
+        # root@vm7:/srv# ls -alh
+        # total 12K
+        # drwxr-xr-x  2 root root 4.0K Jul 25 19:56 .
+        # drwxr-xr-x 20 root root 4.0K Jul  4 17:24 ..
+        # -rwxr-xr-x  1 root root    0 Jul 25 19:56 conf
+        # -rw-r--r--  1 root root   16 Jul 25 19:56 index.html
+        # on container:
+        # root@staticweb-deployment-65b859758-6q4vk:/homework# ls -alh
+        # total 16K
+        # drwxr-xr-x 2 root root 4.0K Jul 25 19:56 .
+        # drwxr-xr-x 1 root root 4.0K Jul 25 19:56 ..
+        # -rw-r--r-- 1 root root   51 Jul 25 19:56 conf
+        # -rw-r--r-- 1 root root   16 Jul 25 19:56 index.html
+        # root@staticweb-deployment-65b859758-6q4vk:/homework# cat conf
+        # variable1=value1
+        # variable2=value2
+        # variable3=value3
         - name: web-config
-          mountPath: /test/conf
+          mountPath: /homework/conf
           subPath: conf
         readinessProbe:
           httpGet:
