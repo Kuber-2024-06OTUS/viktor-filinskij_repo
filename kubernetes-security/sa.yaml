@@ -7,6 +7,7 @@ metadata:
   name: monitoring
   namespace: homework
 ---
+# kubectl -n homework create token cd --duration=24h > tokenfile
 apiVersion: v1
 kind: ServiceAccount
 metadata:
