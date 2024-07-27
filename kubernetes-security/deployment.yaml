@@ -24,18 +24,26 @@ spec:
         app.kubernetes.io/name: staticweb
     spec:
       serviceAccountName: monitoring
+      securityContext:
+        #runAsUser: 1000  # all processes in container uid
+        #runAsGroup: 2000 # all processes in container group id
+        fsGroup: 3000    # group id who owns files of mounted volumes
+        fsGroupChangePolicy: "OnRootMismatch"
+        # inside container uid=1000 gid=2000 groups=3000
       nodeSelector:
         homework: "true"
       containers:
       - name: nginx
-        image: nginx:latest
+        image: nginx:mainline-alpine
+        securityContext:
+          allowPrivilegeEscalation: false
         ports:
         - name: staticweb-port
           containerPort: 8000
         lifecycle:
           preStop:
             exec:
-              command: ["/bin/sh","-c","rm -rf /homework/index.html /homework/conf"]
+              command: ["/bin/sh","-c","rm -rf /homework/index.html"]
         volumeMounts:
         - name: nginx-main-conf
           mountPath: /etc/nginx
@@ -85,12 +93,46 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 3
       initContainers:
-      - name: htmlgenerator
+      - name: indexgenerator
         image: alpine:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+        command: ["/bin/ash"]
         args:
-          - /bin/sh
           - -c
           - echo "i am index.html" > /init/index.html
+        volumeMounts:
+        - name: shared
+          mountPath: "/init"
+      - name: metricsgenerator
+        image: curlimages/curl:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+#        env:
+#        - name: SERVICE_ACCOUNT_PATH
+#          value: "/var/run/secrets/kubernetes.io/serviceaccount"
+#        - name: CACERT_PATH
+#          value: "$(SERVICE_ACCOUNT_PATH)/ca.crt"
+#        - name: SERVICE_ACCOUNT_TOKEN
+#          valueFrom:
+#            secretKeyRef:
+#              name: monitoring-token
+#              key: token
+#        - name: KUBE_API_ENDPOINT
+#          value: "https://kubernetes.default.svc"
+#        command: ["/usr/bin/curl"]
+#        args:
+#          - --cacert
+#          - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+#          - --header
+#          - \"Authorization: Bearer \$\(cat /var/run/secrets/kubernetes.io/serviceaccount/token\)\"
+#          - -X
+#          - GET
+#          - https://kubernetes.default.svc/metrics
+#          - -o
+#          - /init/metrics.html
+        command: ["/bin/ash", "-c"]
+        args: ['curl --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt --header "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -X GET https://kubernetes.default.svc/metrics -o /init/metrics.html']
         volumeMounts:
         - name: shared
           mountPath: "/init"
