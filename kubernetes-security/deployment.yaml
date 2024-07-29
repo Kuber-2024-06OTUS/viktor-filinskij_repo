@@ -1,0 +1,154 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: staticweb-deployment
+  namespace: homework
+  labels:
+    app.kubernetes.io/name: staticweb
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: staticweb
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      name: staticweb
+      namespace: homework
+      labels:
+        app.kubernetes.io/name: staticweb
+    spec:
+      serviceAccountName: monitoring
+      securityContext:
+        #runAsUser: 1000  # all processes in container uid
+        #runAsGroup: 2000 # all processes in container group id
+        fsGroup: 3000    # group id who owns files of mounted volumes
+        fsGroupChangePolicy: "OnRootMismatch"
+        # inside container uid=1000 gid=2000 groups=3000
+      nodeSelector:
+        homework: "true"
+      containers:
+      - name: nginx
+        image: nginx:mainline-alpine
+        securityContext:
+          allowPrivilegeEscalation: false
+        ports:
+        - name: staticweb-port
+          containerPort: 8000
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh","-c","rm -rf /homework/index.html"]
+        volumeMounts:
+        - name: nginx-main-conf
+          mountPath: /etc/nginx
+          readOnly: true
+        - name: shared
+          mountPath: /homework
+          readOnly: false
+        # when mounting config as subpath of pvc, config map content will be available only from container
+        # but not on the host. On host inside /srv this "conf" file will be empty and has rwx rights
+        # on kube node :
+        # root@vm7:/srv# ls -alh
+        # total 12K
+        # drwxr-xr-x  2 root root 4.0K Jul 25 19:56 .
+        # drwxr-xr-x 20 root root 4.0K Jul  4 17:24 ..
+        # -rwxr-xr-x  1 root root    0 Jul 25 19:56 conf
+        # -rw-r--r--  1 root root   16 Jul 25 19:56 index.html
+        # on container:
+        # root@staticweb-deployment-65b859758-6q4vk:/homework# ls -alh
+        # total 16K
+        # drwxr-xr-x 2 root root 4.0K Jul 25 19:56 .
+        # drwxr-xr-x 1 root root 4.0K Jul 25 19:56 ..
+        # -rw-r--r-- 1 root root   51 Jul 25 19:56 conf
+        # -rw-r--r-- 1 root root   16 Jul 25 19:56 index.html
+        # root@staticweb-deployment-65b859758-6q4vk:/homework# cat conf
+        # variable1=value1
+        # variable2=value2
+        # variable3=value3
+        - name: web-config
+          mountPath: /homework/conf
+          subPath: conf
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: staticweb-port
+            httpHeaders:
+            - name: X-Readiness-Probe
+              value: k8s-local
+          initialDelaySeconds: 10
+          periodSeconds: 3
+        livenessProbe:
+          httpGet:
+            path: /index.html
+            port: staticweb-port
+            httpHeaders:
+            - name: K8SHealthChecker
+              value: LivenessProbe
+          initialDelaySeconds: 5
+          periodSeconds: 3
+      initContainers:
+      - name: indexgenerator
+        image: alpine:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+        command: ["/bin/ash"]
+        args:
+          - -c
+          - echo "i am index.html" > /init/index.html
+        volumeMounts:
+        - name: shared
+          mountPath: "/init"
+      - name: metricsgenerator
+        image: curlimages/curl:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+#        env:
+#        - name: SERVICE_ACCOUNT_PATH
+#          value: "/var/run/secrets/kubernetes.io/serviceaccount"
+#        - name: CACERT_PATH
+#          value: "$(SERVICE_ACCOUNT_PATH)/ca.crt"
+#        - name: SERVICE_ACCOUNT_TOKEN
+#          valueFrom:
+#            secretKeyRef:
+#              name: monitoring-token
+#              key: token
+#        - name: KUBE_API_ENDPOINT
+#          value: "https://kubernetes.default.svc"
+#        command: ["/usr/bin/curl"]
+#        args:
+#          - --cacert
+#          - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+#          - --header
+#          - \"Authorization: Bearer \$\(cat /var/run/secrets/kubernetes.io/serviceaccount/token\)\"
+#          - -X
+#          - GET
+#          - https://kubernetes.default.svc/metrics
+#          - -o
+#          - /init/metrics.html
+        command: ["/bin/ash", "-c"]
+        args: ['curl --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt --header "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -X GET https://kubernetes.default.svc/metrics -o /init/metrics.html']
+        volumeMounts:
+        - name: shared
+          mountPath: "/init"
+      volumes:
+      - name: nginx-main-conf
+        configMap:
+          name: nginx-config
+          items:
+            - key: "nginx.conf"
+              path: "nginx.conf"
+      - name: shared
+        persistentVolumeClaim:
+          claimName: "pvc001"
+      - name: web-config
+        configMap:
+          name: homework-config
+          items:
+            - key: "app.conf"
+              path: "conf"

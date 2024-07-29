@@ -7,7 +7,7 @@ metadata:
     storageclass.beta.kubernetes.io/is-default-class: "true"
 provisioner: kubernetes.io/no-provisioner
 allowVolumeExpansion: true
-reclaimPolicy: Retain
+reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 ---
 apiVersion: v1
@@ -19,6 +19,9 @@ spec:
     - ReadWriteMany
   capacity:
     storage: 100Mi
+  volumeMode: Filesystem
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "local-storage"
   claimRef:
     name: pvc001
     namespace: homework
@@ -32,9 +35,6 @@ spec:
           operator: In
           values:
           - 'true'
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: "local-storage"
-  volumeMode: Filesystem
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -44,7 +44,7 @@ metadata:
 spec:
   storageClassName: "local-storage"
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   volumeMode: Filesystem
   resources:
     requests:
