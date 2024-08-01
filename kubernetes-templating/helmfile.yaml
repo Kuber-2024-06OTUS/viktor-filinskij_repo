@@ -1,0 +1,8 @@
+releases:
+# Local chart example
+- name: bitnami-kafka       # name of this release
+  namespace: {{ requiredEnv "DEPLOY_ENV"|default "dev" }}            # target namespace
+  chart: ./charts/kafka     # the chart being installed to create this release, referenced by relative path to local helmfile
+  values:
+  - ./{{ requiredEnv "DEPLOY_ENV" }}/values.yaml # Values file taken from path with environment variable. $PLATFORM_ENV must be set in the calling environment.
+  wait: true
