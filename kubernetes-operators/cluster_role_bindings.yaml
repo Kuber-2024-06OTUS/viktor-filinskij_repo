@@ -1,0 +1,12 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: administrators
+subjects:
+- kind: ServiceAccount
+  name: admin
+  namespace: homework
+roleRef:
+  kind: ClusterRole
+  name: administrator

@@ -1,0 +1,49 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: roflmaoinmysoul-deployment
+  namespace: homework
+  labels:
+    app.kubernetes.io/name: roflmaoinmysoul
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: roflmaoinmysoul
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      name: mysql-operator
+      namespace: homework
+      labels:
+        app.kubernetes.io/name: roflmaoinmysoul
+    spec:
+      serviceAccountName: admin
+      nodeSelector:
+        homework: "true"
+      containers:
+      - name: mysql-operator
+        image: roflmaoinmysoul/mysql-operator:1.0.0
+        ports:
+        - name: mysql-port
+          containerPort: 3306
+        volumeMounts:
+        - name: shared
+          mountPath: /pvc001-nfs/
+          readOnly: false
+        readinessProbe:
+          tcpSocket:
+            port: mysql-port
+          initialDelaySeconds: 10
+          periodSeconds: 3
+        livenessProbe:
+          tcpSocket:
+            port: mysql-port
+          initialDelaySeconds: 5
+          periodSeconds: 3
+      volumes:
+      - name: shared
+        persistentVolumeClaim:
+          claimName: "pvc001-nfs"

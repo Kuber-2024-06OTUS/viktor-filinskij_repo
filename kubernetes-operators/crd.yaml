@@ -1,0 +1,49 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  # metadata.name: must be spec.names.plural+"."+spec.group
+  name: mysqls.stable.otus.homework
+spec:
+  group: stable.otus.homework
+  scope: Namespaced
+  names:
+    kind: MySQL
+    plural: mysqls
+    singular: mysql
+    categories:
+      - sql
+    shortNames:
+      - mys
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              image:
+                type: string
+              database:
+                type: string
+              password:
+                type: string
+              storage_size:
+                type: string
+              replicas:
+                type: integer
+---
+apiVersion: "stable.otus.homework/v1"
+kind: MySQL
+metadata:
+  name: mysql-operator-otus-homework
+# spec:
+#   image: roﬂmaoinmysoul/mysql-operator:1.0.0
+#   database: db1
+#   password: pa$$w0rd
+#   storage_size: 300Mi
+#   replicas: 1

@@ -1,0 +1,9 @@
+---
+# kubectl -n homework create token cd --duration=24h > tokenfile
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    kubernetes.io/enforce-mountable-secrets: "true"
+  name: admin
+  namespace: homework
